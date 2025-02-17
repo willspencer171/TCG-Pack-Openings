@@ -1,38 +1,13 @@
 from __future__ import annotations
 from typing import Self
 
-from utils import debug_message
+from src.utils import debug_message
+from config import RARITY_RANKING
 
 import random
 
 from pokemontcgsdk import Card, QueryBuilder, Set
 from dataclasses import dataclass
-
-RARITY_RANKING = {
-    "Amazing Rare": 5,
-    "Common": 1,
-    "LEGEND": 5,
-    "Promo": 2,
-    "Rare": 5,
-    "Rare ACE": 5,
-    "Rare BREAK": 5,
-    "Rare Holo": 5,
-    "Rare Holo EX": 5,
-    "Rare Holo GX": 5,
-    "Rare Holo LV.X": 5,
-    "Rare Holo Star": 5,
-    "Rare Holo V": 5,
-    "Rare Holo VMAX": 7,
-    "Rare Prime": 5,
-    "Rare Prism Star": 7,
-    "Rare Rainbow": 10,
-    "Rare Secret": 7,
-    "Rare Shining": 7,
-    "Rare Shiny": 7,
-    "Rare Shiny GX": 7,
-    "Rare Ultra": 10,
-    "Uncommon": 2
-}
 
 @dataclass
 class HashCard(Card):
@@ -63,23 +38,22 @@ class HashCard(Card):
 
 class Pack:
     ### Should be an abstract class implemented by each set? Maybe?
-    ### Or just change the number of cards if it's a mcdonald's set
+    ### Or just change the number of cards if it's a promo set
 
     # What does a pack need to have?
     # 1 energy card
-    # 0-3 Trainer Cards
-    # 6-9 Pokemon Cards
+    # 9 Other cards
+    # Last card is guaranteed at least rare (rank 5)
 
-    # Chances of higher rarity cards increase as card number increases
-
-    # Are Cards hashable? They are now!
     def __init__(self, set_id):
         self.set_id = set_id
         self.set = Set.find(set_id)
-        self.pack_items = self.pick_cards()
+        self.pack_items = []
+        self.pick_cards()
 
-    def pick_cards(self) -> list[HashCard]:
+    def pick_cards(self):
         available = HashCard.where(q=f'set.id:{self.set_id}')
+        high_rarity = [card for card in available if RARITY_RANKING[card.rarity] >= 5]
 
         debug_message("Set cards found")
 
@@ -101,10 +75,10 @@ class Pack:
         self.pack_items.append(card)
 
         # Pick 9 cards
-        self.pack_items = self.pack_items + Pack.draw_random(available, 9)
+        self.pack_items = self.pack_items + Pack._draw_random(available, 8) + Pack._draw_random(high_rarity)
     
     @staticmethod
-    def _draw_random(card_pool, k):
+    def _draw_random(card_pool, k=1):
         weights = {rarity: 1 / rank for rarity, rank in RARITY_RANKING.items()}
         card_ranks = [weights[card.rarity] for card in card_pool]
 
@@ -115,3 +89,18 @@ class Pack:
     
     def __len__(self):
         return len(self.pack_items)
+    
+    def __iter__(self):
+        yield from self.pack_items
+
+    def __getitem__(self, index):
+        return self.pack_items[index]
+
+class PromoPack(Pack):
+    @staticmethod
+    def _draw_random():
+        raise NotImplementedError
+    
+    def pick_cards(self):
+        # 4 cards in pack
+        pass
