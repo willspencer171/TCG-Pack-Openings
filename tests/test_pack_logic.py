@@ -10,6 +10,5 @@ def test_hash_card_is_hashable():
     assert h
 
 def test_pack_returns_10_cards():
-    set = Pack("swsh1")
-    pack = set.pick_cards()
+    pack = Pack("swsh1")
     assert len(pack) == 10

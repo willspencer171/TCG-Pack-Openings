@@ -76,7 +76,7 @@ class Pack:
     def __init__(self, set_id):
         self.set_id = set_id
         self.set = Set.find(set_id)
-        self.pack_items = []
+        self.pack_items = self.pick_cards()
 
     def pick_cards(self) -> list[HashCard]:
         available = HashCard.where(q=f'set.id:{self.set_id}')
@@ -102,11 +102,9 @@ class Pack:
 
         # Pick 9 cards
         self.pack_items = self.pack_items + Pack.draw_random(available, 9)
-
-        return self.pack_items
     
     @staticmethod
-    def draw_random(card_pool, k):
+    def _draw_random(card_pool, k):
         weights = {rarity: 1 / rank for rarity, rank in RARITY_RANKING.items()}
         card_ranks = [weights[card.rarity] for card in card_pool]
 
@@ -114,3 +112,6 @@ class Pack:
                                weights=card_ranks,
                                k=k)
         return sorted(cards, key=lambda x: RARITY_RANKING[x.rarity])
+    
+    def __len__(self):
+        return len(self.pack_items)
