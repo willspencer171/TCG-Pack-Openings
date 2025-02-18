@@ -1,19 +1,21 @@
-from src.pack_logic import HashCard, Pack
-import pytest
-import os
-import pickle  
+from src.pack_logic import HashCard
+from config import RARITY_RANKING
 
-@pytest.fixture(scope='session')
-def pack_for_testing():
-    return Pack('sv8')
+def test_pack_is_indexable(pack_for_testing):
+    assert pack_for_testing[0] is not None
 
-@pytest.mark.skip('too many calls to API')
-def test_hash_card_is_hashable():
-    hashcard = HashCard.find('xy1-1')
+def test_pack_is_iterable(pack_for_testing):
+    for card in pack_for_testing:
+        assert card
+
+def test_pack_contains_cards_only(pack_for_testing):
+    for card in pack_for_testing:
+        assert isinstance(card, HashCard)
+
+def test_hash_card_is_hashable(pack_for_testing):
+    hashcard = pack_for_testing[0]
     assert hashcard is not None
-    h = hash(hashcard)
-    print(h)
-    assert h
+    assert hash(hashcard)
 
 def test_pack_returns_10_cards(pack_for_testing):
     assert len(pack_for_testing) == 10
@@ -22,4 +24,4 @@ def test_pack_returns_10_cards(pack_for_testing):
         print(f'{card.name} - {card.rarity}')
 
 def test_last_card_is_rare(pack_for_testing):
-    assert pack_for_testing[-1].rarity not in ['Common', 'Uncommon']
+    assert RARITY_RANKING[pack_for_testing[-1].rarity] >= 5
