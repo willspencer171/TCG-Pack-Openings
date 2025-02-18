@@ -12,7 +12,7 @@ from dataclasses import dataclass
 @dataclass
 class HashCard(Card):
     """HashCard dataclass ensures a hash table-like object can be used to
-    keep track of obtained cards from pulls"""
+    keep track of obtained cards from pulls in the future"""
     def __hash__(self):
         return hash(self.id)
     
@@ -48,23 +48,27 @@ class Pack:
     def __init__(self, set_id):
         self.set_id = set_id
         self.set = Set.find(set_id)
-        self.pack_items = []
+        self.pack_items: list[HashCard | None] = []
         self.pick_cards()
 
     def pick_cards(self):
+        debug_message("Fetching cards...")
         available = HashCard.where(q=f'set.id:{self.set_id}')
-        high_rarity = [card for card in available if RARITY_RANKING[card.rarity] >= 5]
+        debug_message("Set cards retrieved!")
+        high_rarity = [card for card in available if RARITY_RANKING[card.rarity] >= 7]
 
-        debug_message("Set cards found")
-
-        energies = [card for card in available if card.supertype == 'energy' and card.subtypes == 'basic']
-        for card in available:
-            if card in energies:
+        energies = [card for card in available if 
+                    card.supertype == 'energy'
+                    and 'basic' in card.subtypes and
+                    'rare' not in card.rarity.lower()]
+        
+        for card in energies:
+            if card in available:
                 available.remove(card)
 
         if len(energies) == 0:
             debug_message("No basic Energies in set, looking in series")
-            energies = HashCard.where(q=f'set.series:"{self.set.series}" supertype:energy subtypes:basic -rarity:*secret')
+            energies = HashCard.where(q=f'set.series:"{self.set.series}" supertype:energy subtypes:basic -rarity:*rare*')
             if len(energies) > 0:
                 debug_message("Basic energies found")
             else:
@@ -75,17 +79,18 @@ class Pack:
         self.pack_items.append(card)
 
         # Pick 9 cards
-        self.pack_items = self.pack_items + Pack._draw_random(available, 8) + Pack._draw_random(high_rarity)
+        self.pack_items = self.pack_items + sorted(Pack._draw_random(available, 8) + Pack._draw_random(high_rarity), 
+                                                   key=lambda x: RARITY_RANKING[x.rarity])
     
     @staticmethod
-    def _draw_random(card_pool, k=1):
+    def _draw_random(card_pool: list[HashCard], k=1):
         weights = {rarity: 1 / rank for rarity, rank in RARITY_RANKING.items()}
         card_ranks = [weights[card.rarity] for card in card_pool]
 
         cards = random.choices(card_pool, 
                                weights=card_ranks,
                                k=k)
-        return sorted(cards, key=lambda x: RARITY_RANKING[x.rarity])
+        return cards
     
     def __len__(self):
         return len(self.pack_items)
