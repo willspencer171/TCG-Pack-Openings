@@ -1,3 +1,8 @@
+import asyncio
+import aiohttp
+from io import BytesIO
+from PIL import Image
+
 def debug_message(message, type='debug'):
     from config import DEBUG
     if DEBUG:
@@ -6,3 +11,17 @@ def debug_message(message, type='debug'):
         elif type == 'error':
             print(f"\033[31m [ERROR] {message}")
             quit()  ### Maybe this will mean return to search in the future
+
+async def fetch_image(session, url):
+    async with session.get(url) as response:
+        if response.status == 200:
+            img_data = await response.read()
+            return BytesIO(img_data)  # Keep image in memory
+        else:
+            print(f"Failed to fetch {url} - Status: {response.status}")
+            return None
+        
+async def download_pack_images(image_urls):
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_image(session, url) for url in image_urls]
+        return await asyncio.gather(*tasks)  # Fetch all images concurrently
