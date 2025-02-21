@@ -18,7 +18,7 @@ RARITY_RANKING = {
     "Amazing Rare": 5,
     "Common": 1,
     "LEGEND": 5,
-    "Promo": 3,
+    "Promo": 10,
     "Rare": 5,
     "Rare ACE": 5,
     "Rare BREAK": 5,
@@ -49,5 +49,6 @@ RARITY_RANKING = {
     "Shiny Ultra Rare": 9, 
     "Special Illustration Rare": 8,
     "Trainer Gallery Rare Holo": 9, 
-    "Ultra Rare": 7
+    "Ultra Rare": 7,
+    None: 10
 }
