@@ -55,7 +55,8 @@ class Pack:
         debug_message(f"Fetching cards from {self.set.name}...")
         available = HashCard.where(q=f'set.id:{self.set_id}')
         debug_message("Set cards retrieved!")
-        high_rarity = [card for card in available if RARITY_RANKING[card.rarity] >= 7]
+        high_rarity = [card for card in available if
+                       RARITY_RANKING[card.rarity] >= 7]
 
         energies = [card for card in available if 
                     card.supertype == 'energy'
@@ -75,7 +76,18 @@ class Pack:
             if len(energies) > 0:
                 debug_message("Basic energies found")
             else:
-                debug_message(f"No energies found in set {self.set.name}", 'error')
+                debug_message(f"No energies found in series {self.set.series}")
+                ### Search through series around
+                match self.set.series:
+                    case "POP":
+                        energies = HashCard.where(q=(f'set.series:"EX" supertype:energy subtypes:basic -rarity:*holo*'))
+                        
+                    case "Other":
+                        energies = HashCard.where(q=(f'set.series:"Sword & Shield" supertype:energy '
+                                                     'subtypes:basic -rarity:*secret*'))
+
+                    case "Platinum":
+                        energies = HashCard.where(q=(f'set.series:"Diamond & Pearl" supertype:energy subtypes:basic'))
 
         # Add Energy card for first card
         card = random.choice(energies)
