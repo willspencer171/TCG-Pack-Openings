@@ -5,6 +5,7 @@ from pokemontcgsdk import RestClient
 load_dotenv()
 
 API_KEY = os.getenv('API_KEY')
+SET_LIST_LOCATION = os.getenv('SET_LIST_LOCATION')
 
 if not API_KEY:
     raise ValueError("API_KEY is missing! Please check .env file")
