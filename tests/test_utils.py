@@ -10,14 +10,16 @@ def test_debug_message():
 @pytest.mark.asyncio
 async def test_download_pack_images(pack_for_testing):
     """Test async image downloading for a pack."""
-    # Fake image URLs (replace with real ones in actual tests)
+    debug_message(f'Chosen Pack: {pack_for_testing.set.name}')
+
+    # Image URLs for cards
     image_urls = [card.images.small for card in pack_for_testing]
 
     # Run the async image download function
     image_data_list = await download_pack_images(image_urls)
 
     # Check all images downloaded successfully
-    assert len(image_data_list) == 10  # Expecting 10 images
+    assert len(image_data_list) == len(pack_for_testing)
     assert all(img_data is not None for img_data in image_data_list), "Some images failed to download"
 
     # Check if images are valid
