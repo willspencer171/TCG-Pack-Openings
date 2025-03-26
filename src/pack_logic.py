@@ -16,6 +16,9 @@ class HashCard(Card):
     def __hash__(self):
         return hash(self.id)
     
+    def __eq__(self, other):
+        return self.id == other.id
+    
     @staticmethod
     def find(id) -> Self:
         return QueryBuilder(HashCard, HashCard.transform).find(id)
@@ -115,6 +118,12 @@ class Pack:
 
     def __getitem__(self, index):
         return self.pack_items[index]
+    
+    def __hash__(self):
+        return hash(self.set_id)
+
+    def __eq__(self, other):
+        return self.set_id == other.set_id
 
 class PromoPack(Pack):
     @staticmethod

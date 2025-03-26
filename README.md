@@ -1,4 +1,4 @@
-# Pokémon Trading Card Game pack Simulator
+# Pokémon Trading Card Game Pack Simulator
 
 ## Project Description
 
