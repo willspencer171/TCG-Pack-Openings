@@ -67,8 +67,7 @@ class Inventory:
 
         df = self.as_dataframe()
         return round(df[
-            ~(df['supertype'] == 'energy') | 
-            ~(df['rarity'] == 'common')]
+            ~(df['supertype'] == 'energy')]
             ['avg_price'].sum(), 2)
 
     def inventory_summary(self):

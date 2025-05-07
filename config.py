@@ -1,7 +1,6 @@
 from dotenv import load_dotenv
 import os
-from pokemontcgsdk import RestClient
-from pokemontcgsdk import Set
+from pokemontcgsdk import RestClient, Set
 
 if not os.path.exists('.env'):
     open('.env', 'w').close()
