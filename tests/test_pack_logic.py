@@ -25,3 +25,7 @@ def test_pack_returns_10_cards(pack_for_testing):
 
 def test_last_card_is_rare(pack_for_testing):
     assert RARITY_RANKING[pack_for_testing[-1].rarity] >= 5
+
+def test_pack_can_have_trainer_gallery(trainer_gallery_pack):
+    ids = [card.set.id for card in trainer_gallery_pack.available]
+    assert any(gallery in setid for gallery in ['tg', 'gg'] for setid in ids)
