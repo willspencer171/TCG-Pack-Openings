@@ -1,25 +1,41 @@
 from dotenv import load_dotenv
 import os
 from pokemontcgsdk import RestClient
+from pokemontcgsdk import Set
+
+if not os.path.exists('.env'):
+    open('.env', 'w').close()
 
 load_dotenv()
 
 API_KEY = os.getenv('API_KEY')
 SET_LIST_LOCATION = os.getenv('SET_LIST_LOCATION')
 INVENTORY_LOCATION = os.getenv('INVENTORY_LOCATION')
+APP_CURRENCY = os.getenv('APP_CURRENCY')
 
-if not API_KEY:
-    raise ValueError("API_KEY is missing! Please check .env file")
+CURRENCY_CONVERSIONS = {
+            'USD': 1,
+            'GBP': 0.75,
+            'EUR': 0.88
+        }
+
+for env_key in [API_KEY, SET_LIST_LOCATION, INVENTORY_LOCATION, APP_CURRENCY]:
+    if not env_key:
+        raise ValueError(f"{env_key} is missing! Please check .env file")
 
 RestClient.configure(API_KEY)
 
 DEBUG = True
 
+setlist = [s.id for s in Set.all()]
+with open(SET_LIST_LOCATION, 'w') as f:
+    f.write('\n'.join(setlist))
+
 RARITY_RANKING = {
     "Amazing Rare": 5,
     "Common": 1,
     "LEGEND": 5,
-    "Promo": 10,
+    "Promo": 1,
     "Rare": 5,
     "Rare ACE": 5,
     "Rare BREAK": 5,
@@ -43,13 +59,13 @@ RARITY_RANKING = {
     "Classic Collection": 6, 
     "Double Rare": 6, 
     "Hyper Rare": 8,
-    "Illustration Rare": 6, 
+    "Illustration Rare": 7, 
     "Radiant Rare": 6, 
     "Rare Holo VSTAR": 8,
     "Shiny Rare": 7, 
     "Shiny Ultra Rare": 9, 
-    "Special Illustration Rare": 8,
+    "Special Illustration Rare": 9,
     "Trainer Gallery Rare Holo": 9, 
     "Ultra Rare": 7,
-    None: 10
+    None: 1
 }
