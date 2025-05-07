@@ -1,6 +1,6 @@
 import pytest
 from config import SET_LIST_LOCATION
-from random import choice
+from random import choice, choices
 from pokemontcgsdk import Set
 from src.pack_logic import Pack
 import os
@@ -18,6 +18,11 @@ def pack_for_testing():
     with open(SET_LIST_LOCATION, 'r') as f:
         pack_ids = f.readlines()
 
-    chosen_pack = choice(pack_ids)
+    chosen_pack = choices(pack_ids, weights=list(range(len(pack_ids), 0, -1)), k=1)[0]
     
     return Pack(chosen_pack)
+
+@pytest.fixture(scope='session')
+def trainer_gallery_pack():
+    sets = ['swsh9', 'swsh10', 'swsh11', 'swsh12', 'swsh12pt5']
+    return Pack(choice(sets))
