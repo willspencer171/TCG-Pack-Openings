@@ -14,6 +14,8 @@ Since this is a WIP project, here is a list of things I'd like to get done.
 - ~~Generate a pack of 10 cards~~
 - ~~"Open" that pack by fetching and showing images~~
 - Create a GUI for the pack opening procedure
-- Keep an inventory of which packs have been opened and what cards have been obtained
+- ~~Keep an inventory of which packs have been opened and what cards have been obtained~~
+  - Do I need to come back to this one day?
+  - Been working on this the most. Not bad at the moment
 - Potentially introduce a currency or time lock so I don't lose the magic of opening packs
 - Balancing the odds of getting rare cards
