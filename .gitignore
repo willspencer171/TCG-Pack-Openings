@@ -3,3 +3,4 @@ venv
 .pytest*
 __pycache__
 data/
+*.png

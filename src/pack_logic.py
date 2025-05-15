@@ -1,9 +1,10 @@
 from __future__ import annotations # Deprecated in Python 3.14
 
-from src.utils import debug_message, download_pack_images
+from src.utils import debug_message, download_pack_images, show_images
 from config import RARITY_RANKING, APP_CURRENCY, CURRENCY_CONVERSIONS, setlist
 
 import random
+import asyncio
 
 from pokemontcgsdk import Card, QueryBuilder, Set
 from dataclasses import dataclass
@@ -66,13 +67,13 @@ class Pack:
     # What does a pack need to have?
     # 1 energy card
     # 9 Other cards
-    # Last card is guaranteed at least rare (rank 5)
+    # Last card is guaranteed at least rare (rank 3)
 
     def __init__(self, set_id, ten_pack=False):
         self.set_id = set_id
         self.ten_pack = ten_pack
         self.set: Set = Set.find(set_id)
-        self.pack_items: list[HashCard | None]
+        self.pack_items: list[HashCard | None] = []
         self.available: list[HashCard | None]
         self.pick_cards()
     
@@ -81,7 +82,10 @@ class Pack:
 
     def pick_cards(self):
         debug_message(f"Fetching cards from {self.set.name}...")
-        self.available = HashCard.where(q=f'set.id:{self.set_id} rarity:*')
+        # Don't want energies if they're basic, we'll find them later
+        query = f'set.id:{self.set_id} rarity:*'
+        self.available = HashCard.where(q=query)
+
         if len(self.available) != 0:
             if any([s in [self.set.id + "gg", self.set.id + "tg"] for s in setlist]):
                 debug_message('Adding gallery set')
@@ -93,61 +97,58 @@ class Pack:
             debug_message('Set has no rarity info, probs a promo')
             self.available = HashCard.where(q=f'set.id:{self.set_id}')
             high_rarity = self.available
-        
-        energies = [card for card in self.available if 
-                    card.supertype == 'energy'
-                    and 'basic' in card.subtypes and
-                    not any(rarity in card.rarity for 
-                            rarity in ['secret', 'hyper', None])]
-        
-        for card in energies:
-            if card in self.available:
-                self.available.remove(card)
 
         if self.ten_pack:
-            n_standard = 80
-            n_high = 10
-            n_energy = 10
+            n_packs = 10
         else:
-            n_standard = 8
-            n_high = 1
-            n_energy = 1
+            n_packs = 1
 
-        if len(energies) == 0:
-            debug_message("No basic Energies in set, looking in series")
-            query = (f'set.series:"{self.set.series}" supertype:energy subtypes:basic '
-                      '-rarity:*secret* -rarity:*hyper* -rarity:*holo*')
-            energies = HashCard.where(q=query)
-            if len(energies) > 0:
-                debug_message("Basic energies found")
-            else:
-                debug_message(f"No energies found in series {self.set.series}")
-                ### Search through series around
-                match self.set.series:
-                    case "POP":
-                        energies = HashCard.where(q=(f'set.series:"EX" supertype:energy subtypes:basic -rarity:*holo*'))
-                        
-                    case "Other":
-                        energies = HashCard.where(q=(f'set.series:"Sword & Shield" supertype:energy '
-                                                     'subtypes:basic -rarity:*secret*'))
+        # Now we find the basic energies from the series
+        query = (f'set.series:"{self.set.series}" supertype:energy subtypes:basic '
+                    '-rarity:*secret* -rarity:*hyper* -rarity:*holo*')
+        energies = HashCard.where(q=query)
 
-                    case "Platinum":
-                        energies = HashCard.where(q=(f'set.series:"Diamond & Pearl" supertype:energy subtypes:basic'))
+        self.available = [card for card in self.available if card not in energies]
+
+        # If we don't find any basic energies, we can search through the series
+        # around the current one
+        
+        if len(energies) > 0:
+            debug_message("Basic energies found")
+        else:
+            debug_message(f"No energies found in series {self.set.series}")
+            ### Search through series around
+            match self.set.series:
+                case "POP":
+                    energies = HashCard.where(q=(f'set.series:"EX" supertype:energy subtypes:basic -rarity:*holo*'))
+                    
+                case "Other":
+                    energies = HashCard.where(q=(f'set.series:"Sword & Shield" supertype:energy '
+                                                    'subtypes:basic -rarity:*secret*'))
+
+                case "Platinum":
+                    energies = HashCard.where(q=(f'set.series:"Diamond & Pearl" supertype:energy subtypes:basic'))
 
         debug_message(f'Got {len(energies)} energies')
-        # Add Energy card for first card
-        self.pack_items = random.choices(energies, k=n_energy)
-
         debug_message(f'Got {len(self.available)} cards, with {len(high_rarity)} high rank')
-        # Pick 9 cards
-        self.pack_items = self.pack_items + sorted(Pack._draw_random(self.available, n_standard) + Pack._draw_random(high_rarity, n_high), 
-                                                   key=lambda x: RARITY_RANKING[x.rarity] + 
-                                                                 HashCard.qualities.index(x.quality))
+
+        for _ in range(n_packs):
+            # Add Energy card for first card
+            self.pack_items.append(random.choice(energies))
+
+            # Pick 9 cards
+            self.pack_items += sorted(Pack._draw_random(self.available, 8) + Pack._draw_random(high_rarity, 1), 
+                                                    key=lambda x: RARITY_RANKING[x.rarity] + 
+                                                                    HashCard.qualities.index(x.quality))
+        
+        asyncio.run(self.get_pack_images())
     
     @staticmethod
     def _draw_random(card_pool: list[HashCard], k=1):
         weights = {rarity: 1 / rank for rarity, rank in RARITY_RANKING.items()}
-        card_ranks = [weights[card.rarity] for card in card_pool]
+        card_ranks = [weights[card.rarity] * 0.25 if card.supertype == 'Trainer' 
+                    else weights[card.rarity]
+                    for card in card_pool]
 
         cards = random.choices(card_pool, 
                                weights=card_ranks,
@@ -157,10 +158,13 @@ class Pack:
     async def get_pack_images(self):
         pack_image_urls = [card.images.small for card in self.pack_items]
         self.image_data = await download_pack_images(pack_image_urls)
+
+    async def show_pack_images(self):
+        await show_images(self.image_data[::-1])
     
     def print_pack(self):
         for card in self.pack_items:
-            print(f"{card.name}: {card.rarity}")
+            print(card.name, card.rarity, card.quality, sep=' -- ')
 
     def __len__(self):
         return len(self.pack_items)

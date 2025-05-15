@@ -58,17 +58,19 @@ class Inventory:
             self.cards_obtained[card] += 1
         
         self.packs_opened[pack] += len(pack) // 10
+        self.save_inventory()
     
     def add_card(self, card: HashCard):
         self.cards_obtained[card] += 1
+        self.save_inventory()
     
     @property
-    def total_estimated_value(self):
+    def total_estimated_value(self) -> float:
 
         df = self.as_dataframe()
-        return round(df[
+        return float(round(df[
             ~(df['supertype'] == 'energy')]
-            ['avg_price'].sum(), 2)
+            ['avg_price'].sum(), 2))
 
     def inventory_summary(self):
         total_cards = self.size[0]
@@ -76,7 +78,7 @@ class Inventory:
         return {
             "total_cards": total_cards,
             "unique_cards": unique_cards,
-            "total_price": float(self.total_estimated_value)
+            "total_price": self.total_estimated_value
         }
     
     def as_dataframe(self) -> pd.DataFrame:
