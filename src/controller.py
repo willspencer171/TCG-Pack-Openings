@@ -35,6 +35,9 @@ class Controller:
     def run(self, set_id, ten_pack=False, rarity_difficulty=2):
         config.RARITY_RANKING, config.RARITY_PROBABILITIES = config.generate_ranking(rarity_difficulty)
         pack = Pack(set_id, ten_pack=ten_pack)
+        self.inventory.add_pack(pack)
+        self.inventory.save_inventory()
+
         self.view = PygameView(800, 800)
         self.next_button = Button('Next', 56, 28, 
                                   (self.view.screen.get_rect().centerx,

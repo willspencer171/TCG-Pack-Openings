@@ -50,7 +50,7 @@ class HashCard(Card):
         this_quals = np.array(this_quals)
         
         if this_quals.size != 0:
-            weights = reversed(list(np.logspace(-1, 0, this_quals.size, base=2)))
+            weights = list(range(1, this_quals.size+1))[::-1]
             response['quality'] = random.choices(this_quals, weights=weights)[0]
         else:
             response['quality'] = response.get('quality', 'normal')
@@ -96,7 +96,7 @@ class Pack:
                 self.available += HashCard.where(q=f'set.id:{self.set_id}*g rarity:*')
             debug_message("Set cards retrieved!")
             high_rarity = [card for card in self.available if
-                       config.RARITY_RANKING[card.rarity] >= 5]
+                       config.RARITY_RANKING[card.rarity] >= 2]
         else:
             debug_message('Set has no rarity info, probs a promo')
             self.available = HashCard.where(q=f'set.id:{self.set_id}')
@@ -141,9 +141,11 @@ class Pack:
             self.pack_items.append(random.choice(energies))
 
             # Pick 9 cards
-            self.pack_items += sorted(Pack._draw_random(self.available, 8) + Pack._draw_random(high_rarity, 1), 
-                                                    key=lambda x: config.RARITY_RANKING[x.rarity] + 
-                                                                    HashCard.qualities.index(x.quality))
+            self.pack_items += sorted(Pack._draw_random(self.available, 8), key=lambda x: config.RARITY_RANKING[x.rarity] + 
+                                                                    HashCard.qualities.index(x.quality) +
+                                                                    random.randint(-1, 1)) \
+                                                        + Pack._draw_random(high_rarity, 1)
+                                                    
         
         asyncio.run(self.get_pack_images())
     
