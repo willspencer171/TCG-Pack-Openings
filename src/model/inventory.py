@@ -1,8 +1,8 @@
 from __future__ import annotations  # deprecated in v3.14
 
-from src.pack_logic import Pack, HashCard
-from src.utils import debug_message
-from config import INVENTORY_LOCATION, RARITY_RANKING, APP_CURRENCY
+from src.model.pack_logic import Pack, HashCard
+from src.model.utils import debug_message
+import config
 
 from collections import defaultdict
 import pickle
@@ -11,7 +11,7 @@ import pandas as pd
 
 class Inventory:
     def __init__(self, reset_inv = False):
-        if not reset_inv and path.exists(INVENTORY_LOCATION):
+        if not reset_inv and path.exists(config.INVENTORY_LOCATION):
             inv = Inventory.open_inventory()
             self.packs_opened_ = inv.packs_opened
             self.cards_obtained_ = inv.cards_obtained
@@ -24,20 +24,20 @@ class Inventory:
         return self.as_dataframe().__str__() + f'\n{self.inventory_summary()}'
 
     def save_inventory(self):
-        if not path.exists(INVENTORY_LOCATION):
-            with open(INVENTORY_LOCATION, 'xb') as file:
+        if not path.exists(config.INVENTORY_LOCATION):
+            with open(config.INVENTORY_LOCATION, 'xb') as file:
                 pickle.dump(self, file)
         else:
-            with open(INVENTORY_LOCATION, 'wb') as file:
+            with open(config.INVENTORY_LOCATION, 'wb') as file:
                 pickle.dump(self, file)
 
     @staticmethod
     def open_inventory() -> Inventory:
-        if not path.exists(INVENTORY_LOCATION):
+        if not path.exists(config.INVENTORY_LOCATION):
             debug_message('No inventory file found, please confirm '
-                          f'existence of file {INVENTORY_LOCATION}', 'error')
+                          f'existence of file {config.INVENTORY_LOCATION}', 'error')
         
-        with open(INVENTORY_LOCATION, 'rb') as file:
+        with open(config.INVENTORY_LOCATION, 'rb') as file:
             inv = pickle.load(file)
             return inv
 

@@ -1,4 +1,4 @@
-from src.utils import debug_message, download_pack_images
+from src.model.utils import debug_message, download_pack_images
 from PIL import Image
 import pytest
 from config import DEBUG

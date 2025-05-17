@@ -1,5 +1,5 @@
-from src.inventory import *
-from config import INVENTORY_LOCATION
+from src.model.inventory import *
+import config
 from pytest import skip
 
 from os.path import getmtime
@@ -31,7 +31,7 @@ def test_inventory_saves_and_loads(pack_for_testing):
     inv = Inventory()
     inv.add_pack(pack_for_testing)
     inv.save_inventory()
-    assert dt.fromtimestamp(getmtime(INVENTORY_LOCATION)) >= dt.now() - td(milliseconds=5)    # test it was saved recently
+    assert dt.fromtimestamp(getmtime(config.INVENTORY_LOCATION)) >= dt.now() - td(milliseconds=5)    # test it was saved recently
     inv = Inventory.open_inventory()
     assert inv is not None
 

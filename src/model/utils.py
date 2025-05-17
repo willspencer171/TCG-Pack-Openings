@@ -3,7 +3,6 @@ import aiohttp
 from io import BytesIO
 from PIL import Image
 from typing import Literal
-from queue import Queue
 
 def debug_message(message, type: Literal['debug', 'error'] = 'debug'):
     from config import DEBUG

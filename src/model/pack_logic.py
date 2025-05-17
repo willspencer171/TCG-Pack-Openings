@@ -1,10 +1,11 @@
 from __future__ import annotations # Deprecated in Python 3.14
 
-from src.utils import debug_message, download_pack_images, show_images
-from config import RARITY_RANKING, APP_CURRENCY, CURRENCY_CONVERSIONS, setlist
+from src.model.utils import debug_message, download_pack_images, show_images
+import config
 
 import random
 import asyncio
+import numpy as np
 
 from pokemontcgsdk import Card, QueryBuilder, Set
 from dataclasses import dataclass
@@ -40,14 +41,17 @@ class HashCard(Card):
         this_quals = []
         for qual in HashCard.qualities:
             if response.get('tcgplayer', {}).get('prices', {}).get(qual):
-                response['tcgplayer']['prices'][qual] = {key: round(val * CURRENCY_CONVERSIONS[APP_CURRENCY], 2) 
+                response['tcgplayer']['prices'][qual] = {key: round(val * config.CURRENCY_CONVERSIONS[config.APP_CURRENCY], 2) 
                                                           for key, val in 
                                                           response['tcgplayer']['prices'].pop(qual).items()
                                                           if val}
                 this_quals.append(qual)
+
+        this_quals = np.array(this_quals)
         
-        if len(this_quals) != 0:
-            response['quality'] = random.choices(this_quals, weights=list(range(len(this_quals), 0, -1)))[0]
+        if this_quals.size != 0:
+            weights = reversed(list(np.logspace(-1, 0, this_quals.size, base=2)))
+            response['quality'] = random.choices(this_quals, weights=weights)[0]
         else:
             response['quality'] = response.get('quality', 'normal')
         return response
@@ -87,12 +91,12 @@ class Pack:
         self.available = HashCard.where(q=query)
 
         if len(self.available) != 0:
-            if any([s in [self.set.id + "gg", self.set.id + "tg"] for s in setlist]):
+            if any([s in [self.set.id + "gg", self.set.id + "tg"] for s in config.setlist]):
                 debug_message('Adding gallery set')
                 self.available += HashCard.where(q=f'set.id:{self.set_id}*g rarity:*')
             debug_message("Set cards retrieved!")
             high_rarity = [card for card in self.available if
-                       RARITY_RANKING[card.rarity] >= 5]
+                       config.RARITY_RANKING[card.rarity] >= 5]
         else:
             debug_message('Set has no rarity info, probs a promo')
             self.available = HashCard.where(q=f'set.id:{self.set_id}')
@@ -138,14 +142,14 @@ class Pack:
 
             # Pick 9 cards
             self.pack_items += sorted(Pack._draw_random(self.available, 8) + Pack._draw_random(high_rarity, 1), 
-                                                    key=lambda x: RARITY_RANKING[x.rarity] + 
+                                                    key=lambda x: config.RARITY_RANKING[x.rarity] + 
                                                                     HashCard.qualities.index(x.quality))
         
         asyncio.run(self.get_pack_images())
     
     @staticmethod
     def _draw_random(card_pool: list[HashCard], k=1):
-        weights = {rarity: 1 / rank for rarity, rank in RARITY_RANKING.items()}
+        weights = config.RARITY_PROBABILITIES
         card_ranks = [weights[card.rarity] * 0.25 if card.supertype == 'Trainer' 
                     else weights[card.rarity]
                     for card in card_pool]
