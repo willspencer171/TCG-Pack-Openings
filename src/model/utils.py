@@ -4,14 +4,17 @@ from io import BytesIO
 from PIL import Image
 from typing import Literal
 
-def debug_message(message, type: Literal['debug', 'error'] = 'debug'):
+
+def debug_message(message, type: Literal["debug", "error"] = "debug"):
     from config import DEBUG
+
     if DEBUG:
-        if type == 'debug':
+        if type == "debug":
             print(f"\033[34m[DEBUG] {message}\033[37m")
-        elif type == 'error':
+        elif type == "error":
             print(f"\033[31m [ERROR] {message}\033[37m")
             quit()  ### Maybe this will mean return to search in the future
+
 
 async def fetch_image(session, url):
     async with session.get(url) as response:
@@ -21,11 +24,13 @@ async def fetch_image(session, url):
         else:
             debug_message(f"Failed to fetch {url} - Status: {response.status}")
             return None
-        
+
+
 async def download_pack_images(image_urls):
     async with aiohttp.ClientSession() as session:
         tasks = [fetch_image(session, url) for url in image_urls]
         return await asyncio.gather(*tasks)  # Fetch all images concurrently
+
 
 async def show_images(image_data):
     for datum in image_data:
