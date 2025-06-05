@@ -8,6 +8,10 @@ import numpy as np
 if not os.path.exists(".env"):
     open(".env", "w").close()
 
+if not os.path.exists("data/incomplete_read.log"):
+    with open("data/incomplete_read.log", "w") as f:
+        f.write("0")
+
 load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
@@ -80,6 +84,10 @@ ranking_tiers = [
 
 
 def generate_ranking(decay: float = 2):
+    if decay > 9:
+        decay = 9
+    if decay < 1:
+        decay = 1 
     num_tiers = len(ranking_tiers)
     weights = np.linspace(0, decay, num=num_tiers)
     weights = np.exp(-weights)

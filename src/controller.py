@@ -10,6 +10,7 @@ from src.view import PygameView, Button
 from src.model.pack_logic import Pack
 from src.model.inventory import Inventory
 from src.model.textures import holo_shimmer, rainbow_shimmer
+from src.model.db import create_tables, populate_data
 import config
 
 
@@ -29,8 +30,8 @@ class Controller:
     async def async_fetch_images(self, pack: Pack):
         async with aiohttp.ClientSession() as session:
             for card in pack:
-                if hasattr(card, "images") and card.images.small:
-                    card_image_data = await fetch_image(session, card.images.small)
+                if hasattr(card, "image_small_url") and card.image_small_url:
+                    card_image_data = await fetch_image(session, card.image_small_url)
                     if card_image_data:
                         self.image_queue.put((card, card_image_data))
 
@@ -40,6 +41,8 @@ class Controller:
         config.RARITY_RANKING, config.RARITY_PROBABILITIES = config.generate_ranking(
             rarity_difficulty
         )
+        create_tables()
+        populate_data()
         pack = Pack(set_id, ten_pack=ten_pack)
         self.inventory.add_pack(pack)
         self.inventory.save_inventory()
@@ -92,7 +95,7 @@ class Controller:
                 and current_card.rarity
                 and any(
                     elem in current_card.rarity.lower()
-                    for elem in ["rainbow", "shin", "break"]
+                    for elem in ["rainbow", "shin", "break", "hyper"]
                 )
             ):
                 holo_offset += 1

@@ -1,9 +1,9 @@
 import numpy as np
 from pygame.surfarray import make_surface
 from pygame import Surface
+from matplotlib.colors import hsv_to_rgb
 
-
-def hsv_to_rgb(h, s, v):
+""" def hsv_to_rgb(h, s, v):
     if s:
         if h == 1.0:
             h = 0.0
@@ -27,7 +27,7 @@ def hsv_to_rgb(h, s, v):
         if i == 5:
             return (v, w, q)
     else:
-        return (v, v, v)
+        return (v, v, v) """
 
 
 def apply_holo_effect(
@@ -43,22 +43,49 @@ def apply_holo_effect(
 def rainbow_shimmer(offset, image: Surface):
     w, h = image.get_size()
     shimmer = np.zeros((w, h, 3), np.uint8)
-    for x in range(w):
-        hue = ((x + offset) % 360) / 360
-        r, g, b = hsv_to_rgb(hue, 1, 1)
-        shimmer[x, :, 0] = int(r * 255)
-        shimmer[x, :, 1] = int(g * 255)
-        shimmer[x, :, 2] = int(b * 255)
-
+    angle = np.deg2rad(-45)
+    cos_a = np.cos(angle)
+    sin_a = np.sin(angle)
+    x = np.arange(w)
+    y = np.arange(h)
+    cx, cy = w / 2, h / 2
+    dx = x - cx
+    dy = y - cy
+    dx2d, dy2d = np.meshgrid(dx, dy, indexing='ij')
+    rx = cos_a * dx2d - sin_a * dy2d
+    hue = ((rx + offset) % 360) / 360
+    hsv = np.zeros((w, h, 3), dtype=np.float32)
+    hsv[..., 0] = hue
+    hsv[..., 1] = 1.0
+    hsv[..., 2] = 1.0
+    rgb = hsv_to_rgb(hsv)
+    rgb255 = (rgb * 255).astype(np.uint8)
+    shimmer[:, :, :] = rgb255
     return shimmer
 
 
 def holo_shimmer(offset, image: Surface):
     width, height = image.get_size()
     shimmer = np.zeros((width, height, 3), dtype=np.uint8)
-    for x in range(width):
-        brightness = int(60 + 40 * np.sin((x + offset) * 0.05))  # smooth wave
-        shimmer[x, :, :] = (brightness, brightness, brightness)
+    angle = np.deg2rad(-45)
+    cos_a = np.cos(angle)
+    sin_a = np.sin(angle)
+    # Create a grid of x, y coordinates
+    x = np.arange(width)
+    y = np.arange(height)
+    cx, cy = width / 2, height / 2
+    dx = x - cx
+    dy = y - cy
+    # Use broadcasting to create 2D arrays of dx and dy
+    dx2d, dy2d = np.meshgrid(dx, dy, indexing='ij')
+    # Rotate coordinates
+    rx = cos_a * dx2d - sin_a * dy2d
+    # Compute brightness for all pixels at once
+    brightness = 60 + 40 * np.sin((rx + offset) * 0.05)
+    brightness = np.clip(brightness, 0, 175).astype(np.uint8)
+    shimmer[:, :, 0] = brightness
+    shimmer[:, :, 1] = brightness
+    shimmer[:, :, 2] = brightness
     return shimmer
 
 

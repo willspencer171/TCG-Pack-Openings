@@ -1,4 +1,4 @@
-from __future__ import annotations  # Deprecated in Python 3.14
+from __future__ import annotations
 
 from src.model.utils import debug_message, download_pack_images, show_images
 import config
@@ -7,16 +7,28 @@ import random
 import asyncio
 import numpy as np
 
-from pokemontcgsdk import Card, QueryBuilder, Set
+from pokemontcgsdk import QueryBuilder, Set
 from dataclasses import dataclass
 
 
 @dataclass
-class HashCard(Card):
+class HashCard:
     """HashCard dataclass ensures a hash table-like object can be used to
     keep track of obtained cards from pulls in the future"""
 
+    id: str
+    name: str
+    set_id: str
+    set_name: str
+    rarity: str
+    supertype: str
+    subtypes: list[str]
+    image_small_url: str
+    artist: str
+    number: str
+    types: list[str]
     quality: str
+    price: float
     qualities = [
         "normal",
         "holofoil",
@@ -24,6 +36,7 @@ class HashCard(Card):
         "1stEditionNormal",
         "1stEditionHolofoil",
     ]
+    RESOURCE = "cards"
 
     def __hash__(self):
         return hash(self.id + self.quality)
@@ -32,15 +45,53 @@ class HashCard(Card):
         return self.id == other.id
 
     @staticmethod
-    def find(id) -> HashCard:
-        return QueryBuilder(HashCard, HashCard.transform).find(id)
+    def find(id) -> 'HashCard':
+        from src.model.db import fetch_cards
+        rows = fetch_cards(id=[id])
+        if rows:
+            return HashCard.from_db_row(rows[0])
+        return None
 
     @staticmethod
-    def where(**kwargs) -> list[HashCard]:
-        return QueryBuilder(HashCard, HashCard.transform).where(**kwargs)
+    def where(id: list[str] = None, set_id: list[str] = None, set_id_like: list[str] = None, name: list[str] = None, name_like: list[str] = None,
+                set_name: list[str] = None, rarity: list[str] = None, not_rarity: list[str] = None, rarity_not_null: bool = True, rarity_like: list[str] = None,
+                rarity_not_like: list[str] = None, supertype: list[str] = None, supertype_not: list[str] = None, subtypes:list[str] = None, price: list[float] = None,
+                price_range: tuple[float, float] = None, price_lt: float = None, price_gt: float = None,
+                artist_like: list[str] = None, types: list[str] = None, quality: list[str] = None, series: list[str] = None,
+                q:str=None, **kwargs) -> list['HashCard']:
+        if q:
+            return QueryBuilder(HashCard, HashCard.transform).where(q=q, **kwargs)
+
+        from src.model.db import fetch_cards
+        rows = fetch_cards(
+            id=id,
+            set_id=set_id,
+            set_id_like=set_id_like,
+            set_name=set_name,
+            name=name,
+            name_like=name_like,
+            rarity=rarity,
+            not_rarity=not_rarity,
+            rarity_not_null=rarity_not_null,
+            rarity_like=rarity_like,
+            rarity_not_like=rarity_not_like,
+            supertype=supertype,
+            supertype_not=supertype_not,
+            subtypes=subtypes,
+            price=price,
+            price_range=price_range,
+            price_lt=price_lt,
+            price_gt=price_gt,
+            artist_like=artist_like,
+            types=types,
+            quality=quality,
+            series=series
+        )
+        return [HashCard.from_db_row(row) for row in rows]
 
     @staticmethod
-    def all() -> list[HashCard]:
+    def all() -> list['HashCard']:
+        debug_message("Fetching all cards from the database. May take a while...")
         return QueryBuilder(HashCard, HashCard.transform).all()
 
     @staticmethod
@@ -64,20 +115,39 @@ class HashCard(Card):
             response["quality"] = random.choices(this_quals, weights=weights)[0]
         else:
             response["quality"] = response.get("quality", "normal")
+
+        response['set_id'] = response.get('set', {}).get('id', '')
+        response['set_name'] = response.get('set', {}).get('name', '')
+        response['series'] = response.get('set', {}).get('series', 'Other')
+        response['image_small_url'] = response.get('images', {}).get('small', '')
+        response['price'] = response.get('tcgplayer', {}).get('prices', {}).get(
+            response['quality'], {}).get('market', 0.0)
+        response['artist'] = response.get('artist', '')
+        response['types'] = response.get('types', [])
+        response['subtypes'] = response.get('subtypes', [])
+        response['rarity'] = response.get('rarity', 'None')
+        response['supertype'] = response.get('supertype', 'None')
+        response['id'] = response.get('id', '')
+        response['number'] = response.get('number', '')
         return response
-
-    @property
-    def price(self):
-        return getattr(
-            getattr(
-                getattr(getattr(self, "tcgplayer", None), "prices", None),
-                self.quality,
-                None,
-            ),
-            "market",
-            0.0,
+    
+    @classmethod
+    def from_db_row(cls, row: tuple) -> HashCard:
+        return cls(
+            id=row[0],
+            name=row[1],
+            set_id=row[2],
+            set_name=row[3],
+            rarity=row[4],
+            supertype=row[5],
+            subtypes=row[6],
+            image_small_url=row[8],
+            price=row[9],
+            artist=row[10],
+            number=row[11],
+            types=row[12],
+            quality=row[7],
         )
-
 
 class Pack:
     ### Should be an abstract class implemented by each set? Maybe?
@@ -102,24 +172,20 @@ class Pack:
     def pick_cards(self):
         debug_message(f"Fetching cards from {self.set.name}...")
         # Don't want energies if they're basic, we'll find them later
-        query = f"set.id:{self.set_id} rarity:*"
-        self.available = HashCard.where(q=query)
+        self.available = HashCard.where(set_id=[self.set_id])
 
         if len(self.available) != 0:
             if any(
                 [s in [self.set.id + "gg", self.set.id + "tg"] for s in config.setlist]
             ):
                 debug_message("Adding gallery set")
-                self.available += HashCard.where(q=f"set.id:{self.set_id}*g rarity:*")
+                self.available += HashCard.where(set_id_like=[self.set_id])
             debug_message("Set cards retrieved!")
-            high_rarity = [
-                card
-                for card in self.available
-                if config.RARITY_RANKING[card.rarity] >= 2
-            ]
+            high_rarity = [card for card in self.available if 
+                           any(card.rarity in r for r in config.ranking_tiers[3:])]
         else:
             debug_message("Set has no rarity info, probs a promo")
-            self.available = HashCard.where(q=f"set.id:{self.set_id}")
+            self.available = HashCard.where(set_id=[self.set_id], rarity_not_null=False)
             high_rarity = self.available
 
         if self.ten_pack:
@@ -128,11 +194,8 @@ class Pack:
             n_packs = 1
 
         # Now we find the basic energies from the series
-        query = (
-            f'set.series:"{self.set.series}" supertype:energy subtypes:basic '
-            "-rarity:*secret* -rarity:*hyper* -rarity:*holo*"
-        )
-        energies = HashCard.where(q=query)
+        energies = HashCard.where(series=[self.set.series], supertype=["Energy"], 
+                                  subtypes=["Basic"], rarity_not_like=["Secret", "Hyper", "Holo"])
 
         self.available = [card for card in self.available if card not in energies]
 
@@ -147,24 +210,18 @@ class Pack:
             match self.set.series:
                 case "POP":
                     energies = HashCard.where(
-                        q=(
-                            'set.series:"EX" supertype:energy subtypes:basic -rarity:*holo*'
-                        )
+                        series=['EX'], supertype=["Energy"], subtypes=["Basic"], rarity_not_like=['Holo'],
                     )
 
                 case "Other":
                     energies = HashCard.where(
-                        q=(
-                            'set.series:"Sword & Shield" supertype:energy '
-                            "subtypes:basic -rarity:*secret*"
-                        )
+                        series=["Sword & Shield"], supertype=["Energy"], subtypes=["Basic"], 
+                        rarity_not_like=["Secret"]
                     )
 
                 case "Platinum":
                     energies = HashCard.where(
-                        q=(
-                            'set.series:"Diamond & Pearl" supertype:energy subtypes:basic'
-                        )
+                        series=["Diamond & Pearl"], supertype=["Energy"], subtypes=["Basic"]
                     )
 
         debug_message(f"Got {len(energies)} energies")
@@ -180,8 +237,7 @@ class Pack:
             self.pack_items += sorted(
                 Pack._draw_random(self.available, 8),
                 key=lambda x: config.RARITY_RANKING[x.rarity]
-                + HashCard.qualities.index(x.quality)
-                + random.randint(-2, 2),
+                + HashCard.qualities.index(x.quality),
             ) + Pack._draw_random(high_rarity, 1)
 
         asyncio.run(self.get_pack_images())
@@ -200,7 +256,7 @@ class Pack:
         return cards
 
     async def get_pack_images(self):
-        pack_image_urls = [card.images.small for card in self.pack_items]
+        pack_image_urls = [card.image_small_url for card in self.pack_items]
         self.image_data = await download_pack_images(pack_image_urls)
 
     async def show_pack_images(self):

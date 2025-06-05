@@ -6,5 +6,4 @@ def test_api_key_registered():
     assert RestClient.api_key == config.API_KEY
 
 def test_setlist_location():
-    assert (os.path.exists(config.SET_LIST_LOCATION), 
-            'Please set \'SET_LIST_LOCATION\' environment variable')
+    assert os.path.exists(config.SET_LIST_LOCATION)
