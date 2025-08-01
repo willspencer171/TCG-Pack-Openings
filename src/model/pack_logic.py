@@ -5,7 +5,6 @@ import config
 
 import random
 import asyncio
-import numpy as np
 
 from pokemontcgsdk import QueryBuilder, Set
 from dataclasses import dataclass
@@ -19,16 +18,16 @@ class HashCard:
     id: str
     name: str
     set_id: str
-    set_name: str
     rarity: str
     supertype: str
     subtypes: list[str]
     image_small_url: str
+    image_large_url: str
     artist: str
     number: str
     types: list[str]
-    quality: str
-    price: float
+    quality: str = 'normal'
+    price: float = 0.0
     qualities = [
         "normal",
         "holofoil",
@@ -36,6 +35,7 @@ class HashCard:
         "1stEditionNormal",
         "1stEditionHolofoil",
     ]
+    prices: dict[str, dict[str, float]] = None
     RESOURCE = "cards"
 
     def __hash__(self):
@@ -108,20 +108,13 @@ class HashCard:
                 }
                 this_quals.append(qual)
 
-        this_quals = np.array(this_quals)
-
-        if this_quals.size != 0:
-            weights = list(range(1, this_quals.size + 1))[::-1]
-            response["quality"] = random.choices(this_quals, weights=weights)[0]
-        else:
-            response["quality"] = response.get("quality", "normal")
+        if len(this_quals) == 0:
+            this_quals.append("normal")
 
         response['set_id'] = response.get('set', {}).get('id', '')
-        response['set_name'] = response.get('set', {}).get('name', '')
         response['series'] = response.get('set', {}).get('series', 'Other')
         response['image_small_url'] = response.get('images', {}).get('small', '')
-        response['price'] = response.get('tcgplayer', {}).get('prices', {}).get(
-            response['quality'], {}).get('market', 0.0)
+        response['image_large_url'] = response.get('images', {}).get('large', '')
         response['artist'] = response.get('artist', '')
         response['types'] = response.get('types', [])
         response['subtypes'] = response.get('subtypes', [])
@@ -129,24 +122,31 @@ class HashCard:
         response['supertype'] = response.get('supertype', 'None')
         response['id'] = response.get('id', '')
         response['number'] = response.get('number', '')
+
+        response['qualities'] = this_quals
+        response['prices'] = response.get('tcgplayer', {}).get('prices', {})
         return response
     
     @classmethod
     def from_db_row(cls, row: tuple) -> HashCard:
+        (id, set_id, name, rarity, supertype, 
+         quality, img_sml, img_lge, 
+         price, number, artist, _, types, subtypes) = row
+        
         return cls(
-            id=row[0],
-            name=row[1],
-            set_id=row[2],
-            set_name=row[3],
-            rarity=row[4],
-            supertype=row[5],
-            subtypes=row[6],
-            image_small_url=row[8],
-            price=row[9],
-            artist=row[10],
-            number=row[11],
-            types=row[12],
-            quality=row[7],
+            id=id,
+            name=name,
+            set_id=set_id,
+            rarity=rarity,
+            supertype=supertype,
+            subtypes=subtypes,
+            quality=quality,
+            image_small_url=img_sml,
+            image_large_url=img_lge,
+            price=price,
+            artist=artist,
+            number=number,
+            types=types,
         )
 
 class Pack:

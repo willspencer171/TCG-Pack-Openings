@@ -18,21 +18,30 @@ class Controller:
     def __init__(self):
         self.inventory = Inventory()
         self.image_queue = Queue()
+        self.images_loaded = 0
+        self.pack_queue = Queue()
         self.pack_loaded = False
         self.pack_opened = False
 
-    def start_asyncio_thread(self, pack: Pack):
+    def start_image_fetch_thread(self, pack: Pack):
         def run_asyncio():
             asyncio.run(self.async_fetch_images(pack))
 
         threading.Thread(target=run_asyncio, daemon=True).start()
 
+    def start_pack_gen_thread(self, set_id, ten_pack=False):
+        def run_pack_gen():
+            self.pack_queue.put(Pack(set_id, ten_pack=ten_pack))
+
+        threading.Thread(target=run_pack_gen, daemon=True).start()
+
     async def async_fetch_images(self, pack: Pack):
         async with aiohttp.ClientSession() as session:
             for card in pack:
-                if hasattr(card, "image_small_url") and card.image_small_url:
-                    card_image_data = await fetch_image(session, card.image_small_url)
+                if hasattr(card, "image_large_url") and card.image_large_url:
+                    card_image_data = await fetch_image(session, card.image_large_url)
                     if card_image_data:
+                        self.images_loaded += 1
                         self.image_queue.put((card, card_image_data))
 
             self.pack_loaded = True
@@ -41,23 +50,49 @@ class Controller:
         config.RARITY_RANKING, config.RARITY_PROBABILITIES = config.generate_ranking(
             rarity_difficulty
         )
+        
         create_tables()
         populate_data()
-        pack = Pack(set_id, ten_pack=ten_pack)
+        self.view = PygameView(800, 800)
+
+        self.start_pack_gen_thread(set_id, ten_pack=ten_pack)
+        angle = 0
+        while self.pack_queue.empty():
+            angle += 0.01
+            self.view.render_loading(angle=angle)
+            self.view.update()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
+            self.view.clear()
+        
+        pack = self.pack_queue.get()
         self.inventory.add_pack(pack)
         self.inventory.save_inventory()
+        self.start_image_fetch_thread(pack)
 
-        self.view = PygameView(800, 800)
+        while self.images_loaded < len(pack):
+            angle += 0.02
+            self.view.render_loading(angle=angle)
+            self.view.update()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
+            self.view.clear()
+        self.view.clear()
+
         self.next_button = Button(
             "Next",
             56,
             28,
             (
                 self.view.screen.get_rect().centerx,
-                self.view.screen.get_rect().centery + 200,
+                int(self.view.screen.get_rect().height * 0.9),
             ),
         )
-        self.start_asyncio_thread(pack)
+        
         holo_offset = 0
         running = True
         current_card = None
@@ -69,9 +104,8 @@ class Controller:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    if self.pack_loaded:
+                    if self.pack_loaded and self.next_button.top_rect.collidepoint(pygame.mouse.get_pos()):
                         # Check for new images in the queue
                         if not self.image_queue.empty():
                             self.pack_opened = True

@@ -1,9 +1,11 @@
 from dotenv import load_dotenv
 import os
-from pokemontcgsdk import RestClient, Set
+from pokemontcgsdk import RestClient, Set, PokemonTcgException
 from threading import Thread
 import asyncio
 import numpy as np
+from dataclasses import asdict
+import json
 
 if not os.path.exists(".env"):
     open(".env", "w").close()
@@ -17,6 +19,7 @@ load_dotenv()
 API_KEY = os.getenv("API_KEY")
 SET_LIST_LOCATION = os.getenv("SET_LIST_LOCATION")
 INVENTORY_LOCATION = os.getenv("INVENTORY_LOCATION")
+DATABASE_LOCATION = os.getenv("DATABASE_LOCATION")
 APP_CURRENCY = os.getenv("APP_CURRENCY")
 
 CURRENCY_CONVERSIONS = {"USD": 1, "GBP": 0.75, "EUR": 0.88}
@@ -29,9 +32,15 @@ RestClient.configure(API_KEY)
 
 DEBUG = True
 
-setlist = [s.id for s in Set.all()]
-with open(SET_LIST_LOCATION, "w") as f:
-    f.write("\n".join(setlist))
+try:
+    SETS = Set.all()
+    list_sets = [asdict(s) for s in SETS]
+    SETS = [Set(**set) for set in list_sets]
+    with open(SET_LIST_LOCATION, "w") as f:
+        json.dump(list_sets, f)
+except PokemonTcgException as _:
+    with open(SET_LIST_LOCATION, 'r') as f:
+        SETS = [Set(**set) for set in json.load(f)]
 
 """
 Ranking Hierarchy
@@ -79,6 +88,7 @@ ranking_tiers = [
         "Hyper Rare",
         "Special Illustration Rare",
         "Shiny Ultra Rare",
+        "Black White Rare"
     ],
 ]
 
