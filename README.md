@@ -13,9 +13,13 @@ Since this is a WIP project, here is a list of things I'd like to get done.
 - ~~Get cards using the pokemontcg.io Python API~~
 - ~~Generate a pack of 10 cards~~
 - ~~"Open" that pack by fetching and showing images~~
-- Create a GUI for the pack opening procedure
+- ~~Create a GUI for the pack opening procedure~~
 - ~~Keep an inventory of which packs have been opened and what cards have been obtained~~
   - Do I need to come back to this one day?
   - Been working on this the most. Not bad at the moment
 - Potentially introduce a currency or time lock so I don't lose the magic of opening packs
 - Balancing the odds of getting rare cards
+
+## This is something I'll come back to
+
+This is because the TCG Guru API (and its parent website) are overwhelmed, making development difficult and clunky. As such, I might come back to this either once traffic slows, or when I've decided I want to restart and migrate to a different API (looking at you [TCGDex](https://tcgdex.dev/sdks/python))
