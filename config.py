@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 from pokemontcgsdk import RestClient, Set, PokemonTcgException
+from tcgdexsdk import TCGdex
 from threading import Thread
 import asyncio
 import numpy as np
@@ -16,7 +17,7 @@ if not os.path.exists("data/incomplete_read.log"):
 
 load_dotenv()
 
-API_KEY = os.getenv("API_KEY")
+# API_KEY = os.getenv("API_KEY")
 SET_LIST_LOCATION = os.getenv("SET_LIST_LOCATION")
 INVENTORY_LOCATION = os.getenv("INVENTORY_LOCATION")
 DATABASE_LOCATION = os.getenv("DATABASE_LOCATION")
@@ -24,18 +25,17 @@ APP_CURRENCY = os.getenv("APP_CURRENCY")
 
 CURRENCY_CONVERSIONS = {"USD": 1, "GBP": 0.75, "EUR": 0.88}
 
-for env_key in [API_KEY, SET_LIST_LOCATION, INVENTORY_LOCATION, APP_CURRENCY]:
+for env_key in [SET_LIST_LOCATION, INVENTORY_LOCATION, APP_CURRENCY]:
     if not env_key:
         raise ValueError(f"{env_key} is missing! Please check .env file")
 
-RestClient.configure(API_KEY)
+TCGDEX = TCGdex()
 
 DEBUG = True
 
 try:
-    SETS = Set.all()
-    list_sets = [asdict(s) for s in SETS]
-    SETS = [Set(**set) for set in list_sets]
+    SETS = TCGDEX.set.listSync()
+    list_sets = [asdict(s)['id'] for s in SETS]
     with open(SET_LIST_LOCATION, "w") as f:
         json.dump(list_sets, f)
 except PokemonTcgException as _:

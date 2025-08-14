@@ -1,9 +1,9 @@
 import asyncio
 import aiohttp
+import threading
 from io import BytesIO
 from PIL import Image
-from typing import Literal
-
+from typing import Literal, Coroutine
 
 def debug_message(message, type: Literal["debug", "error"] = "debug"):
     from config import DEBUG
@@ -15,6 +15,13 @@ def debug_message(message, type: Literal["debug", "error"] = "debug"):
             print(f"\033[31m [ERROR] {message}\033[37m")
             quit()  ### Maybe this will mean return to search in the future
 
+def run_async(coroutine: Coroutine, callback=None):
+    def wrapper():
+        result = asyncio.run(coroutine)
+        if callback:
+            callback(result)
+    
+    threading.Thread(target=wrapper, daemon=True).start()
 
 async def fetch_image(session, url):
     async with session.get(url) as response:
