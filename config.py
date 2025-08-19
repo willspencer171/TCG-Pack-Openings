@@ -21,6 +21,7 @@ load_dotenv()
 SET_LIST_LOCATION = os.getenv("SET_LIST_LOCATION")
 INVENTORY_LOCATION = os.getenv("INVENTORY_LOCATION")
 DATABASE_LOCATION = os.getenv("DATABASE_LOCATION")
+DATABASE_TEST_LOCATION = os.getenv("DATABASE_TEST_LOCATION")
 APP_CURRENCY = os.getenv("APP_CURRENCY")
 
 CURRENCY_CONVERSIONS = {"USD": 1, "GBP": 0.75, "EUR": 0.88}
@@ -29,18 +30,12 @@ for env_key in [SET_LIST_LOCATION, INVENTORY_LOCATION, APP_CURRENCY]:
     if not env_key:
         raise ValueError(f"{env_key} is missing! Please check .env file")
 
-TCGDEX = TCGdex()
+TCGDEX_LANGUAGE = 'en'
 
 DEBUG = True
 
-try:
-    SETS = TCGDEX.set.listSync()
-    list_sets = [asdict(s)['id'] for s in SETS]
-    with open(SET_LIST_LOCATION, "w") as f:
-        json.dump(list_sets, f)
-except PokemonTcgException as _:
-    with open(SET_LIST_LOCATION, 'r') as f:
-        SETS = [Set(**set) for set in json.load(f)]
+if DEBUG:
+    DATABASE_LOCATION = DATABASE_TEST_LOCATION
 
 """
 Ranking Hierarchy
