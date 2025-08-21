@@ -1,6 +1,7 @@
 import sqlite3 as sql
 from config import DATABASE_LOCATION
 import tcgdexsdk as tcgdex
+from dataclasses import asdict
 
 from typing import Literal
 
@@ -147,7 +148,7 @@ class DBManager():
                           )
         
         variants = card.variants
-        variant_names = [k for k, v in variants.items() if v]
+        variant_names = [k for k, v in asdict(variants).items() if v]
         self.insert_variants(variant_names)
         for v in variant_names:
             self.insert_card_variants(card.id, v)

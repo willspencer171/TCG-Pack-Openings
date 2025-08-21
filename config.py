@@ -1,12 +1,8 @@
 from dotenv import load_dotenv
 import os
-from pokemontcgsdk import RestClient, Set, PokemonTcgException
-from tcgdexsdk import TCGdex
 from threading import Thread
 import asyncio
 import numpy as np
-from dataclasses import asdict
-import json
 
 if not os.path.exists(".env"):
     open(".env", "w").close()

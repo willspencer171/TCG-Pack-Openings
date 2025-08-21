@@ -1,4 +1,5 @@
 from tcgdexsdk import TCGdex, CardResume
+from asyncio import Semaphore, gather
 
 class APIClient():
     def __init__(self, language='en'):
@@ -7,9 +8,13 @@ class APIClient():
     async def list_cards(self):
         return await self.client.card.list()
     
-    async def list_sets(self):
+    async def list_sets(self, semaphore: Semaphore):
         sets = await self.client.set.list()
-        return [await set.get_full_set() for set in sets]
+        async def fetch_full(setresume):
+            async with semaphore:
+                return await setresume.get_full_set()
+        
+        return await gather(*(fetch_full(s) for s in sets))
     
     async def get_card(self, card_id):
         return await self.client.card.get(card_id)
